@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Simulación 2D</title>
+<style>
+  body { background:#000; color:white; font-family:sans-serif; display:flex; gap:20px; }
+  #ui { width:320px; }
+  #panel { background:#222; padding:10px; border-radius:8px; margin-top:10px; display:none; }
+  canvas { background:#000; border:1px solid #444; }
+  label { display:block; margin-top:10px; }
+  .row { display:flex; justify-content:space-between; align-items:center; }
+  .row input[type=number] { width:70px; }
+</style>
+</head>
+<body>
+
+<div id="ui">
+  <button id="addSphere">Añadir esfera</button>
+
+  <div id="panel">
+    <h3>Esfera seleccionada</h3>
+
+    <label>Color:
+      <input type="color" id="sphereColor">
+    </label>
+
+    <label>Tamaño (radio):</label>
+    <div class="row">
+      <input type="range" id="sphereSize" min="20" max="400" step="1">
+      <input type="number" id="sphereSizeNum" min="20" max="400">
+    </div>
+
+    <label>Velocidad rotación:</label>
+    <div class="row">
+      <input type="range" id="selfSpeed" min="-2" max="2" step="0.01">
+      <input type="number" id="selfSpeedNum" step="0.01">
+    </div>
+
+    <label>Velocidad orbital:</label>
+    <div class="row">
+      <input type="range" id="orbitSpeed" min="-2" max="2" step="0.01">
+      <input type="number" id="orbitSpeedNum" step="0.01">
+    </div>
+
+    <label>Distancia orbital:</label>
+    <div class="row">
+      <input type="range" id="orbitRadius" min="0" max="800" step="1">
+      <input type="number" id="orbitRadiusNum" min="0" max="800">
+    </div>
+
+    <h4>Editor de textura</h4>
+    <canvas id="paintEditor" width="300" height="300"></canvas>
+
+    <label>Tamaño pincel:
+      <input type="range" id="brushSize" min="1" max="50" value="10">
+    </label>
+
+    <label>Color pincel:
+      <input type="color" id="brushColor" value="#ff0000">
+    </label>
+  </div>
+</div>
+
+<canvas id="canvas" width="1200" height="800"></canvas>
+
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+const paintEditor = document.getElementById("paintEditor");
+const pctx = paintEditor.getContext("2d");
+
+class Sphere {
+  constructor(x, y, orbitCenter = null, orbitRadius = 0) {
+    this.x = x;
+    this.y = y;
+    this.radius = 200;
+    this.color = "#ffffff";
+
+    this.selfAngle = 0;
+    this.orbitAngle = 0;
+
+    this.orbitCenter = orbitCenter;
+    this.orbitRadius = orbitRadius;
+
+    this.selfSpeed = 0.5;
+    this.orbitSpeed = 0.5;
+
+    this.texCanvas = document.createElement("canvas");
+    this.texCanvas.width = 600;
+    this.texCanvas.height = 600;
+    this.texCtx = this.texCanvas.getContext("2d");
+
+    this.texCtx.fillStyle = "#ffffff";
+    this.texCtx.fillRect(0, 0, 600, 600);
+
+    this.texture = this.texCanvas;
+  }
+
+  update(dt) {
+    this.selfAngle += this.selfSpeed * dt;
+    this.orbitAngle += this.orbitSpeed * dt;
+
+    if (this.orbitCenter) {
+      this.x = this.orbitCenter.x + this.orbitRadius * Math.cos(this.orbitAngle);
+      this.y = this.orbitCenter.y + this.orbitRadius * Math.sin(this.orbitAngle);
+    }
+  }
+
+  draw(ctx) {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.selfAngle);
+
+    ctx.beginPath();
+    ctx.arc(0, 0, this.radius, 0, Math.PI*2);
+    ctx.clip();
+
+    ctx.drawImage(this.texture, -this.radius, -this.radius, this.radius*2, this.radius*2);
+
+    ctx.restore();
+  }
+
+  isInside(px, py) {
+    return Math.hypot(px - this.x, py - this.y) <= this.radius;
+  }
+}
+
+const spheres = [];
+const earth = new Sphere(canvas.width / 2, canvas.height / 2);
+spheres.push(earth);
+
+let selectedSphere = null;
+
+// UI elements
+const panel = document.getElementById("panel");
+const colorInput = document.getElementById("sphereColor");
+
+const sizeInput = document.getElementById("sphereSize");
+const sizeNum = document.getElementById("sphereSizeNum");
+
+const selfSpeedInput = document.getElementById("selfSpeed");
+const selfSpeedNum = document.getElementById("selfSpeedNum");
+
+const orbitSpeedInput = document.getElementById("orbitSpeed");
+const orbitSpeedNum = document.getElementById("orbitSpeedNum");
+
+const orbitRadiusInput = document.getElementById("orbitRadius");
+const orbitRadiusNum = document.getElementById("orbitRadiusNum");
+
+const brushSizeInput = document.getElementById("brushSize");
+const brushColorInput = document.getElementById("brushColor");
+
+document.getElementById("addSphere").onclick = () => {
+  let s;
+  if (selectedSphere) {
+    s = new Sphere(
+      selectedSphere.x + selectedSphere.radius + 50,
+      selectedSphere.y,
+      selectedSphere,
+      selectedSphere.radius + 50
+    );
+  } else {
+    s = new Sphere(canvas.width / 2, canvas.height / 2);
+  }
+  spheres.push(s);
+};
+
+canvas.addEventListener("mousedown", e => {
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+
+  selectedSphere = spheres.find(s => s.isInside(x, y));
+
+  if (selectedSphere) {
+    panel.style.display = "block";
+
+    colorInput.value = selectedSphere.color;
+
+    sizeInput.value = selectedSphere.radius;
+    sizeNum.value = selectedSphere.radius;
+
+    selfSpeedInput.value = selectedSphere.selfSpeed;
+    selfSpeedNum.value = selectedSphere.selfSpeed;
+
+    orbitSpeedInput.value = selectedSphere.orbitSpeed;
+    orbitSpeedNum.value = selectedSphere.orbitSpeed;
+
+    orbitRadiusInput.value = selectedSphere.orbitRadius;
+    orbitRadiusNum.value = selectedSphere.orbitRadius;
+
+    pctx.clearRect(0, 0, 300, 300);
+    pctx.drawImage(selectedSphere.texture, 0, 0, 300, 300);
+  }
+});
+
+// Pintura en editor
+let painting = false;
+
+paintEditor.addEventListener("mousedown", () => painting = true);
+paintEditor.addEventListener("mouseup", () => painting = false);
+paintEditor.addEventListener("mouseleave", () => painting = false);
+
+paintEditor.addEventListener("mousemove", e => {
+  if (!painting || !selectedSphere) return;
+
+  const rect = paintEditor.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+
+  const size = parseInt(brushSizeInput.value);
+  const color = brushColorInput.value;
+
+  pctx.fillStyle = color;
+  pctx.beginPath();
+  pctx.arc(x, y, size, 0, Math.PI*2);
+  pctx.fill();
+
+  selectedSphere.texCtx.drawImage(paintEditor, 0, 0, 600, 600);
+});
+
+// Sincronización sliders ↔ números
+function sync(slider, number, setter) {
+  slider.oninput = () => {
+    number.value = slider.value;
+    setter(parseFloat(slider.value));
+  };
+  number.oninput = () => {
+    slider.value = number.value;
+    setter(parseFloat(number.value));
+  };
+}
+
+sync(sizeInput, sizeNum, v => selectedSphere && (selectedSphere.radius = v));
+sync(selfSpeedInput, selfSpeedNum, v => selectedSphere && (selectedSphere.selfSpeed = v));
+sync(orbitSpeedInput, orbitSpeedNum, v => selectedSphere && (selectedSphere.orbitSpeed = v));
+sync(orbitRadiusInput, orbitRadiusNum, v => selectedSphere && (selectedSphere.orbitRadius = v));
+
+let lastTime = 0;
+
+function loop(t) {
+  const dt = (t - lastTime) / 1000;
+  lastTime = t;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  spheres.forEach(s => {
+    s.update(dt);
+    s.draw(ctx);
+  });
+
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+
+</body>
+</html>
