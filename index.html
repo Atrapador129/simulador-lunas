@@ -11,6 +11,7 @@
   label { display:block; margin-top:10px; }
   .row { display:flex; justify-content:space-between; align-items:center; }
   .row input[type=number] { width:70px; }
+  button { margin-top:10px; width:100%; }
 </style>
 </head>
 <body>
@@ -21,7 +22,7 @@
   <div id="panel">
     <h3>Esfera seleccionada</h3>
 
-
+    <button id="deleteSphere" style="background:#a00;color:white;">Eliminar esfera</button>
 
     <label>Tamaño (radio):</label>
     <div class="row">
@@ -74,7 +75,6 @@ class Sphere {
     this.x = x;
     this.y = y;
     this.radius = 200;
-    this.color = "#ffffff";
 
     this.selfAngle = 0;
     this.orbitAngle = 0;
@@ -126,13 +126,12 @@ class Sphere {
 }
 
 const spheres = [];
-const earth = new Sphere(canvas.width / 2, canvas.height / 2);
-spheres.push(earth);
+spheres.push(new Sphere(canvas.width / 2, canvas.height / 2));
 
 let selectedSphere = null;
 
+// UI elements
 const panel = document.getElementById("panel");
-const colorInput = document.getElementById("sphereColor");
 
 const sizeInput = document.getElementById("sphereSize");
 const sizeNum = document.getElementById("sphereSizeNum");
@@ -164,6 +163,16 @@ document.getElementById("addSphere").onclick = () => {
   spheres.push(s);
 };
 
+document.getElementById("deleteSphere").onclick = () => {
+  if (!selectedSphere) return;
+
+  const index = spheres.indexOf(selectedSphere);
+  if (index !== -1) spheres.splice(index, 1);
+
+  selectedSphere = null;
+  panel.style.display = "none";
+};
+
 canvas.addEventListener("mousedown", e => {
   const rect = canvas.getBoundingClientRect();
   const x = e.clientX - rect.left;
@@ -173,8 +182,6 @@ canvas.addEventListener("mousedown", e => {
 
   if (selectedSphere) {
     panel.style.display = "block";
-
-    colorInput.value = selectedSphere.color;
 
     sizeInput.value = selectedSphere.radius;
     sizeNum.value = selectedSphere.radius;
@@ -193,6 +200,7 @@ canvas.addEventListener("mousedown", e => {
   }
 });
 
+// Pintura en editor
 let painting = false;
 
 paintEditor.addEventListener("mousedown", () => painting = true);
@@ -206,7 +214,7 @@ paintEditor.addEventListener("mousemove", e => {
   const x = e.clientX - rect.left;
   const y = e.clientY - rect.top;
 
-  const size = parseInt(brushSizeInput.value);
+  const size = Number(brushSizeInput.value) || 0;
   const color = brushColorInput.value;
 
   pctx.fillStyle = color;
@@ -217,6 +225,7 @@ paintEditor.addEventListener("mousemove", e => {
   selectedSphere.texCtx.drawImage(paintEditor, 0, 0, 600, 600);
 });
 
+// Sincronización sliders ↔ números (con null→0)
 function sync(slider, number, setter) {
   slider.oninput = () => {
     let v = Number(slider.value);
@@ -232,7 +241,6 @@ function sync(slider, number, setter) {
     setter(v);
   };
 }
-
 
 sync(sizeInput, sizeNum, v => selectedSphere && (selectedSphere.radius = v));
 sync(selfSpeedInput, selfSpeedNum, v => selectedSphere && (selectedSphere.selfSpeed = v));
