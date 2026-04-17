@@ -31,13 +31,13 @@
 
     <label>Velocidad rotación:</label>
     <div class="row">
-      <input type="range" id="selfSpeed" min="-2" max="2" step="0.01">
+      <input type="range" id="selfSpeed" min="-10" max="10" step="0.01">
       <input type="number" id="selfSpeedNum" step="0.01">
     </div>
 
     <label>Velocidad orbital:</label>
     <div class="row">
-      <input type="range" id="orbitSpeed" min="-2" max="2" step="0.01">
+      <input type="range" id="orbitSpeed" min="-10" max="10" step="0.01">
       <input type="number" id="orbitSpeedNum" step="0.01">
     </div>
 
@@ -131,7 +131,6 @@ spheres.push(earth);
 
 let selectedSphere = null;
 
-// UI elements
 const panel = document.getElementById("panel");
 const colorInput = document.getElementById("sphereColor");
 
@@ -194,7 +193,6 @@ canvas.addEventListener("mousedown", e => {
   }
 });
 
-// Pintura en editor
 let painting = false;
 
 paintEditor.addEventListener("mousedown", () => painting = true);
@@ -219,17 +217,22 @@ paintEditor.addEventListener("mousemove", e => {
   selectedSphere.texCtx.drawImage(paintEditor, 0, 0, 600, 600);
 });
 
-// Sincronización sliders ↔ números
 function sync(slider, number, setter) {
   slider.oninput = () => {
-    number.value = slider.value;
-    setter(parseFloat(slider.value));
+    let v = Number(slider.value);
+    if (isNaN(v)) v = 0;
+    number.value = v;
+    setter(v);
   };
+
   number.oninput = () => {
-    slider.value = number.value;
-    setter(parseFloat(number.value));
+    let v = Number(number.value);
+    if (isNaN(v)) v = 0;
+    slider.value = v;
+    setter(v);
   };
 }
+
 
 sync(sizeInput, sizeNum, v => selectedSphere && (selectedSphere.radius = v));
 sync(selfSpeedInput, selfSpeedNum, v => selectedSphere && (selectedSphere.selfSpeed = v));
